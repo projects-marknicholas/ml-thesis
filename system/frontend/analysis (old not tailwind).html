@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propensity Score Matching and Clustering Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">Propensity Score Matching and Clustering Analysis</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Dataset Overview</h2>
+            <button id="runAnalysis" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Run PSM Analysis
+            </button>
+        </div>
+        
+        <div id="results" class="hidden">
+            <!-- Treatment/Control Counts -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Treatment/Control Groups</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-blue-100 p-4 rounded">
+                        <h3 class="font-semibold">Control Group</h3>
+                        <p id="controlCount" class="text-2xl"></p>
+                    </div>
+                    <div class="bg-green-100 p-4 rounded">
+                        <h3 class="font-semibold">Treatment Group</h3>
+                        <p id="treatmentCount" class="text-2xl"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Income Comparison -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Income Comparison</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b">Metric</th>
+                                <th class="py-2 px-4 border-b">Before Matching</th>
+                                <th class="py-2 px-4 border-b">After Matching</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="py-2 px-4 border-b">Control Mean Income</td>
+                                <td id="controlBefore" class="py-2 px-4 border-b"></td>
+                                <td id="controlAfter" class="py-2 px-4 border-b"></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b">Treatment Mean Income</td>
+                                <td id="treatmentBefore" class="py-2 px-4 border-b"></td>
+                                <td id="treatmentAfter" class="py-2 px-4 border-b"></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b">P-value</td>
+                                <td id="pBefore" class="py-2 px-4 border-b"></td>
+                                <td id="pAfter" class="py-2 px-4 border-b"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Matching Results -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Matching Results</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gray-100 p-4 rounded">
+                        <h3 class="font-semibold">Matched Control</h3>
+                        <p id="matchedControl" class="text-2xl"></p>
+                    </div>
+                    <div class="bg-gray-100 p-4 rounded">
+                        <h3 class="font-semibold">Matched Treatment</h3>
+                        <p id="matchedTreatment" class="text-2xl"></p>
+                    </div>
+                    <div class="bg-gray-100 p-4 rounded">
+                        <h3 class="font-semibold">Caliper</h3>
+                        <p id="caliper" class="text-2xl"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PSM Evaluation -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">PSM Evaluation</h2>
+                <div id="psmEvaluation" class="mb-4"></div>
+                
+                <h3 class="font-semibold mb-2">Effect Size Summary (After Matching)</h3>
+                <div id="effectSizeSummary" class="mb-4"></div>
+                
+                <h3 class="font-semibold mb-2">P-Value Summary (After Matching)</h3>
+                <div id="pValueSummary" class="mb-4"></div>
+                
+                <h3 class="font-semibold mb-2">Propensity Score Overlap Status</h3>
+                <div id="overlapStatus" class="mb-4"></div>
+                
+                <h3 class="font-semibold mb-2">Sample Size Retention</h3>
+                <div id="sampleSizeStatus"></div>
+            </div>
+            
+            <!-- Visualizations -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Visualizations</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="font-semibold mb-2">Propensity Score Distribution Before Matching</h3>
+                        <img id="psBeforeImg" class="w-full h-auto">
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Propensity Score Distribution After Matching</h3>
+                        <img id="psAfterImg" class="w-full h-auto">
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h3 class="font-semibold mb-2">Effect Sizes of Covariates</h3>
+                    <img id="effectSizesImg" class="w-full h-auto">
+                </div>
+            </div>
+            
+            <!-- Clustering Results (only shown if PSM passed) -->
+            <div id="clusteringResults" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Clustering Analysis Results</h2>
+                
+                <div class="mb-6">
+                    <h3 class="font-semibold mb-2">Data Cleaning Summary</h3>
+                    <div id="dataCleaningSummary"></div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="font-semibold mb-2">Dimensionality Reduction Results</h3>
+                    <div id="dimReductionResults"></div>
+                    <div class="mt-4">
+                        <h4 class="font-semibold mb-2">Top Feature Weights</h4>
+                        <img id="featureWeightsImg" class="w-full h-auto">
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="font-semibold mb-2">Ensemble Clustering Results</h3>
+                    <div id="ensembleClusteringResults"></div>
+                    <div class="mt-4">
+                        <h4 class="font-semibold mb-2">Cluster Visualization</h4>
+                        <img id="clustersImg" class="w-full h-auto">
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="font-semibold mb-2">Cluster Summaries</h3>
+                    <div id="clusterSummaries" class="overflow-x-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('runAnalysis').addEventListener('click', async function() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/psm-analysis', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                const data = await response.json();
+                
+                // Display PSM results
+                document.getElementById('controlCount').textContent = data.treatment_counts.control;
+                document.getElementById('treatmentCount').textContent = data.treatment_counts.treatment;
+                
+                document.getElementById('controlBefore').textContent = data.income_comparison.before.control_mean.toFixed(2);
+                document.getElementById('treatmentBefore').textContent = data.income_comparison.before.treatment_mean.toFixed(2);
+                document.getElementById('pBefore').textContent = data.income_comparison.before.p_value.toFixed(4);
+                
+                document.getElementById('controlAfter').textContent = data.income_comparison.after.control_mean.toFixed(2);
+                document.getElementById('treatmentAfter').textContent = data.income_comparison.after.treatment_mean.toFixed(2);
+                document.getElementById('pAfter').textContent = data.income_comparison.after.p_value.toFixed(4);
+                
+                document.getElementById('matchedControl').textContent = data.matching_results.matched_control;
+                document.getElementById('matchedTreatment').textContent = data.matching_results.matched_treatment;
+                document.getElementById('caliper').textContent = data.matching_results.caliper.toFixed(4);
+                
+                // PSM Evaluation
+                const psmEval = data.psm_evaluation;
+                let evaluationHTML = `<p class="mb-2"><strong>Overall Passed:</strong> ${psmEval.passed ? 'Yes' : 'No'}</p>`;
+                
+                if (!psmEval.passed) {
+                    evaluationHTML += '<p class="mb-2"><strong>Reasons for Failure:</strong></p><ul class="list-disc list-inside mb-2">';
+                    psmEval.reasons.forEach(reason => {
+                        evaluationHTML += `<li>${reason}</li>`;
+                    });
+                    evaluationHTML += '</ul>';
+                    
+                    if (psmEval.failed_covariates.length > 0) {
+                        evaluationHTML += `<p class="mb-2"><strong>Unbalanced Covariates:</strong> ${psmEval.failed_covariates.join(', ')}</p>`;
+                    }
+                }
+                document.getElementById('psmEvaluation').innerHTML = evaluationHTML;
+                
+                // Effect Size Summary
+                let effectSizeHTML = '';
+                for (const [key, value] of Object.entries(psmEval.effect_size_summary)) {
+                    effectSizeHTML += `<p><strong>${key}:</strong> ${value.toFixed(4)}</p>`;
+                }
+                document.getElementById('effectSizeSummary').innerHTML = effectSizeHTML;
+                
+                // P-Value Summary
+                let pValueHTML = '';
+                for (const [key, value] of Object.entries(psmEval.p_value_summary)) {
+                    pValueHTML += `<p><strong>${key}:</strong> ${value.toFixed(4)}</p>`;
+                }
+                document.getElementById('pValueSummary').innerHTML = pValueHTML;
+                
+                // Overlap Status
+                const overlap = psmEval.overlap_status;
+                let overlapHTML = `<p><strong>Max Quantile Difference:</strong> ${overlap.max_quantile_diff.toFixed(4)}</p>`;
+                document.getElementById('overlapStatus').innerHTML = overlapHTML;
+                
+                // Sample Size Status
+                const sampleSize = psmEval.sample_size_status;
+                let sampleSizeHTML = `<p><strong>Original Treatment Size:</strong> ${sampleSize.original_treatment_size}</p>`;
+                sampleSizeHTML += `<p><strong>Matched Treatment Size:</strong> ${sampleSize.matched_treatment_size}</p>`;
+                sampleSizeHTML += `<p><strong>Retention Rate:</strong> ${sampleSize.retention_rate.toFixed(1)}%</p>`;
+                document.getElementById('sampleSizeStatus').innerHTML = sampleSizeHTML;
+                
+                // Visualizations
+                document.getElementById('psBeforeImg').src = `data:image/png;base64,${data.visualizations.ps_before}`;
+                document.getElementById('psAfterImg').src = `data:image/png;base64,${data.visualizations.ps_after}`;
+                document.getElementById('effectSizesImg').src = `data:image/png;base64,${data.visualizations.effect_sizes}`;
+                
+                // Show clustering results if PSM passed
+                if (psmEval.passed && data.clustering_results) {
+                    document.getElementById('clusteringResults').classList.remove('hidden');
+                    
+                    // Data cleaning summary
+                    const cleaning = data.clustering_results.data_cleaning;
+                    let cleaningHTML = `
+                        <p><strong>Rows before cleaning:</strong> ${cleaning.rows_before}</p>
+                        <p><strong>Rows after cleaning:</strong> ${cleaning.rows_after}</p>
+                        <p><strong>Duplicates removed:</strong> ${cleaning.duplicates_removed}</p>
+                    `;
+                    document.getElementById('dataCleaningSummary').innerHTML = cleaningHTML;
+                    
+                    // Dimensionality reduction results
+                    const dimReduction = data.clustering_results.dimensionality_reduction;
+                    let dimReductionHTML = `
+                        <p><strong>Best Model:</strong> ${dimReduction.best_model}</p>
+                        <div class="overflow-x-auto mt-2">
+                            <table class="min-w-full bg-white">
+                                <thead>
+                                    <tr>
+                                        <th class="py-2 px-4 border-b">Model</th>
+                                        <th class="py-2 px-4 border-b">Silhouette</th>
+                                        <th class="py-2 px-4 border-b">Calinski-Harabasz</th>
+                                        <th class="py-2 px-4 border-b">Davies-Bouldin</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    dimReduction.metrics.forEach(metric => {
+                        dimReductionHTML += `
+                            <tr>
+                                <td class="py-2 px-4 border-b">${metric.Model}</td>
+                                <td class="py-2 px-4 border-b">${metric.Silhouette.toFixed(4)}</td>
+                                <td class="py-2 px-4 border-b">${metric['Calinski-Harabasz'].toFixed(4)}</td>
+                                <td class="py-2 px-4 border-b">${metric['Davies-Bouldin'].toFixed(4)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    dimReductionHTML += `</tbody></table></div>`;
+                    document.getElementById('dimReductionResults').innerHTML = dimReductionHTML;
+                    
+                    // Feature weights visualization
+                    document.getElementById('featureWeightsImg').src = `data:image/png;base64,${dimReduction.visualization}`;
+                    
+                    // Ensemble clustering results
+                    const ensemble = data.clustering_results.ensemble_clustering;
+                    let ensembleHTML = `
+                        <p><strong>Best Model:</strong> ${ensemble.best_model}</p>
+                        <div class="overflow-x-auto mt-2">
+                            <table class="min-w-full bg-white">
+                                <thead>
+                                    <tr>
+                                        <th class="py-2 px-4 border-b">Model</th>
+                                        <th class="py-2 px-4 border-b">Silhouette</th>
+                                        <th class="py-2 px-4 border-b">Calinski-Harabasz</th>
+                                        <th class="py-2 px-4 border-b">Davies-Bouldin</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    ensemble.metrics.forEach(metric => {
+                        ensembleHTML += `
+                            <tr>
+                                <td class="py-2 px-4 border-b">${metric.Model}</td>
+                                <td class="py-2 px-4 border-b">${metric.Silhouette.toFixed(4)}</td>
+                                <td class="py-2 px-4 border-b">${metric['Calinski-Harabasz'].toFixed(4)}</td>
+                                <td class="py-2 px-4 border-b">${metric['Davies-Bouldin'].toFixed(4)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    ensembleHTML += `</tbody></table></div>`;
+                    document.getElementById('ensembleClusteringResults').innerHTML = ensembleHTML;
+                    
+                    // Cluster visualization
+                    document.getElementById('clustersImg').src = `data:image/png;base64,${ensemble.cluster_visualization}`;
+                    
+                    // Cluster summaries
+                    let clusterSummariesHTML = '';
+                    for (const [feature, summary] of Object.entries(ensemble.cluster_summaries)) {
+                        clusterSummariesHTML += `
+                            <div class="mb-4 p-4 bg-gray-100 rounded">
+                                <h4 class="font-semibold mb-2">${feature}</h4>
+                                <pre class="bg-white p-2 rounded overflow-x-auto">${JSON.stringify(summary, null, 2)}</pre>
+                            </div>
+                        `;
+                    }
+                    document.getElementById('clusterSummaries').innerHTML = clusterSummariesHTML;
+                }
+                
+                // Show results section
+                document.getElementById('results').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while running the analysis.');
+            }
+        });
+    </script>
+</body>
+</html>

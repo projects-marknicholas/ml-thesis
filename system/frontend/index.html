@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propensity Score Matching & Clustering Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="tailwind-config.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 min-h-screen">
+    <!-- Header -->
+    <header class="glass-effect sticky top-0 z-50 animate-slide-down">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                            PSM & Clustering Analysis
+                        </h1>
+                        <p class="text-sm text-gray-600">Advanced Statistical Analysis Dashboard</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="status-indicator status-success animate-pulse-slow"></div>
+                    <span class="text-sm text-gray-600">System Ready</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        <!-- Control Panel -->
+        <section class="mb-8 animate-fade-in">
+            <div class="glass-effect rounded-2xl p-8 card-hover">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-2">Analysis Control Panel</h2>
+                        <p class="text-gray-600">Initialize propensity score matching and clustering analysis</p>
+                    </div>
+                    <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-bounce-gentle">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                </div>
+                
+                <button id="runAnalysis" class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                    <div class="flex items-center justify-center space-x-3">
+                        <span id="buttonText" class="relative z-10">Run PSM Analysis</span>
+                        <div id="loadingSpinner" class="loading-spinner hidden"></div>
+                    </div>
+                    <div class="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
+                
+                <div id="progressContainer" class="hidden mt-4">
+                    <div class="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Processing...</span>
+                        <span id="progressText">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="progressBar" class="progress-bar w-0 h-2 rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Container -->
+        <div id="results" class="hidden space-y-8">
+            <!-- Treatment/Control Groups -->
+            <section class="animate-slide-up">
+                <div class="glass-effect rounded-2xl p-8 card-hover">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <div class="w-2 h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded-full mr-3"></div>
+                        Treatment & Control Groups
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="metric-card rounded-xl p-6 text-center transform transition-all duration-300 hover:scale-105">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-gray-700 mb-2">Control Group</h3>
+                            <p id="controlCount" class="text-3xl font-bold text-blue-600"></p>
+                        </div>
+                        <div class="metric-card rounded-xl p-6 text-center transform transition-all duration-300 hover:scale-105">
+                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-gray-700 mb-2">Treatment Group</h3>
+                            <p id="treatmentCount" class="text-3xl font-bold text-green-600"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Income Comparison -->
+            <section class="animate-slide-up" style="animation-delay: 0.1s">
+                <div class="glass-effect rounded-2xl p-8 card-hover">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <div class="w-2 h-8 bg-gradient-to-b from-green-500 to-blue-600 rounded-full mr-3"></div>
+                        Income Comparison Analysis
+                    </h2>
+                    <div class="overflow-hidden rounded-xl border border-gray-200">
+                        <table class="min-w-full bg-white">
+                            <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
+                                <tr>
+                                    <th class="py-4 px-6 text-left text-sm font-semibold text-gray-700">Metric</th>
+                                    <th class="py-4 px-6 text-left text-sm font-semibold text-gray-700">Before Matching</th>
+                                    <th class="py-4 px-6 text-left text-sm font-semibold text-gray-700">After Matching</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                    <td class="py-4 px-6 font-medium text-gray-900">Control Mean Income</td>
+                                    <td id="controlBefore" class="py-4 px-6 text-gray-700"></td>
+                                    <td id="controlAfter" class="py-4 px-6 text-gray-700"></td>
+                                </tr>
+                                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                    <td class="py-4 px-6 font-medium text-gray-900">Treatment Mean Income</td>
+                                    <td id="treatmentBefore" class="py-4 px-6 text-gray-700"></td>
+                                    <td id="treatmentAfter" class="py-4 px-6 text-gray-700"></td>
+                                </tr>
+                                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                    <td class="py-4 px-6 font-medium text-gray-900">P-value</td>
+                                    <td id="pBefore" class="py-4 px-6 text-gray-700"></td>
+                                    <td id="pAfter" class="py-4 px-6 text-gray-700"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Matching Results -->
+            <section class="animate-slide-up" style="animation-delay: 0.2s">
+                <div class="glass-effect rounded-2xl p-8 card-hover">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <div class="w-2 h-8 bg-gradient-to-b from-purple-500 to-pink-600 rounded-full mr-3"></div>
+                        Matching Results
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="metric-card rounded-xl p-6 text-center transform transition-all duration-300 hover:scale-105">
+                            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-gray-700 mb-2">Matched Control</h3>
+                            <p id="matchedControl" class="text-3xl font-bold text-purple-600"></p>
+                        </div>
+                        <div class="metric-card rounded-xl p-6 text-center transform transition-all duration-300 hover:scale-105">
+                            <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-gray-700 mb-2">Matched Treatment</h3>
+                            <p id="matchedTreatment" class="text-3xl font-bold text-indigo-600"></p>
+                        </div>
+                        <div class="metric-card rounded-xl p-6 text-center transform transition-all duration-300 hover:scale-105">
+                            <div class="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-gray-700 mb-2">Caliper</h3>
+                            <p id="caliper" class="text-3xl font-bold text-cyan-600"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PSM Evaluation -->
+            <section class="animate-slide-up" style="animation-delay: 0.3s">
+                <div class="glass-effect rounded-2xl p-8 card-hover">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <div class="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-600 rounded-full mr-3"></div>
+                        PSM Evaluation Dashboard
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="space-y-6">
+                            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                                <h3 class="font-semibold text-gray-900 mb-4">Overall Assessment</h3>
+                                <div id="psmEvaluation"></div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                                <h3 class="font-semibold text-gray-900 mb-4">Effect Size Summary</h3>
+                                <div id="effectSizeSummary"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                                <h3 class="font-semibold text-gray-900 mb-4">P-Value Summary</h3>
+                                <div id="pValueSummary"></div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                                <h3 class="font-semibold text-gray-900 mb-4">Overlap Status</h3>
+                                <div id="overlapStatus"></div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                                <h3 class="font-semibold text-gray-900 mb-4">Sample Size Retention</h3>
+                                <div id="sampleSizeStatus"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Visualizations -->
+            <section class="animate-slide-up" style="animation-delay: 0.4s">
+                <div class="glass-effect rounded-2xl p-8 card-hover">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <div class="w-2 h-8 bg-gradient-to-b from-teal-500 to-blue-600 rounded-full mr-3"></div>
+                        Statistical Visualizations
+                    </h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 card-hover">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <div class="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                                Before Matching
+                            </h3>
+                            <div class="rounded-lg overflow-hidden">
+                                <img id="psBeforeImg" class="w-full h-auto transition-transform duration-300 hover:scale-105">
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 card-hover">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                After Matching
+                            </h3>
+                            <div class="rounded-lg overflow-hidden">
+                                <img id="psAfterImg" class="w-full h-auto transition-transform duration-300 hover:scale-105">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 border border-gray-200 card-hover">
+                        <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                            <div class="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                            Effect Sizes of Covariates
+                        </h3>
+                        <div class="rounded-lg overflow-hidden">
+                            <img id="effectSizesImg" class="w-full h-auto transition-transform duration-300 hover:scale-105">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Clustering Results -->
+            <section id="clusteringResults" class="hidden animate-slide-up" style="animation-delay: 0.5s">
+                <div class="glass-effect rounded-2xl p-8 card-hover">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <div class="w-2 h-8 bg-gradient-to-b from-pink-500 to-purple-600 rounded-full mr-3"></div>
+                        Advanced Clustering Analysis
+                    </h2>
+                    
+                    <div class="space-y-8">
+                        <!-- Data Cleaning Summary -->
+                        <div class="bg-white rounded-xl p-6 border border-gray-200">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Data Cleaning Summary
+                            </h3>
+                            <div id="dataCleaningSummary" class="text-gray-700"></div>
+                        </div>
+
+                        <!-- Dimensionality Reduction -->
+                        <div class="bg-white rounded-xl p-6 border border-gray-200">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                Dimensionality Reduction Results
+                            </h3>
+                            <div id="dimReductionResults" class="mb-6"></div>
+                            <div class="rounded-lg overflow-hidden">
+                                <h4 class="font-semibold text-gray-800 mb-3">Top Feature Weights</h4>
+                                <img id="featureWeightsImg" class="w-full h-auto transition-transform duration-300 hover:scale-105">
+                            </div>
+                        </div>
+
+                        <!-- Ensemble Clustering -->
+                        <div class="bg-white rounded-xl p-6 border border-gray-200">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                </svg>
+                                Ensemble Clustering Results
+                            </h3>
+                            <div id="ensembleClusteringResults" class="mb-6"></div>
+                            
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div class="rounded-lg overflow-hidden">
+                                    <h4 class="font-semibold text-gray-800 mb-3">Cluster Visualization</h4>
+                                    <img id="clustersImg" class="w-full h-auto transition-transform duration-300 hover:scale-105">
+                                </div>
+                                <div class="rounded-lg overflow-hidden">
+                                    <h4 class="font-semibold text-gray-800 mb-3">Cluster Profiles</h4>
+                                    <img id="clusterProfilesImg" class="w-full h-auto transition-transform duration-300 hover:scale-105">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Enhanced Cluster Summaries -->
+                        <div class="bg-white rounded-xl p-6 border border-gray-200">
+                            <h3 class="font-semibold text-gray-900 mb-6 flex items-center">
+                                <svg class="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                                Interactive Cluster Analysis
+                            </h3>
+                            <div id="clusterSummaries" class="space-y-6"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="analyze.js"></script>
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propensity Score Matching Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+    <!-- Added modern gradient background and improved header design -->
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Modern Header -->
+        <div class="text-center mb-12">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-primary-500 rounded-2xl mb-6 shadow-lg">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+            </div>
+            <h1 class="text-4xl font-bold text-slate-800 mb-4">Propensity Score Matching</h1>
+            <p class="text-lg text-slate-600 max-w-2xl mx-auto">Advanced statistical analysis for causal inference and treatment effect estimation</p>
+        </div>
+        
+        <!-- Redesigned control panel with modern card design -->
+        <div class="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8 mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Analysis Control</h2>
+                    <p class="text-slate-600">Run comprehensive PSM analysis on your dataset</p>
+                </div>
+                <button id="runAnalysis" class="group relative px-8 py-4 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-5 h-5 group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Run PSM Analysis
+                    </span>
+                </button>
+            </div>
+        </div>
+        
+        <div id="results" class="hidden space-y-8">
+            <!-- Modern treatment/control groups section with improved cards -->
+            <div class="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-primary-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    Treatment & Control Groups
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200/50 hover:shadow-lg transition-all duration-300">
+                        <div class="absolute top-0 right-0 w-20 h-20 bg-blue-200/30 rounded-full -translate-y-10 translate-x-10"></div>
+                        <div class="relative">
+                            <h3 class="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                                <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                Control Group
+                            </h3>
+                            <p id="controlCount" class="text-3xl font-bold text-blue-900"></p>
+                            <p class="text-sm text-blue-600 mt-1">participants</p>
+                        </div>
+                    </div>
+                    <div class="group relative overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200/50 hover:shadow-lg transition-all duration-300">
+                        <div class="absolute top-0 right-0 w-20 h-20 bg-emerald-200/30 rounded-full -translate-y-10 translate-x-10"></div>
+                        <div class="relative">
+                            <h3 class="font-semibold text-emerald-800 mb-2 flex items-center gap-2">
+                                <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                                Treatment Group
+                            </h3>
+                            <p id="treatmentCount" class="text-3xl font-bold text-emerald-900"></p>
+                            <p class="text-sm text-emerald-600 mt-1">participants</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modern income comparison table with improved styling -->
+            <div class="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
+                    </div>
+                    Income Comparison Analysis
+                </h2>
+                <div class="overflow-hidden rounded-2xl border border-slate-200">
+                    <table class="min-w-full">
+                        <thead class="bg-gradient-to-r from-slate-50 to-slate-100">
+                            <tr>
+                                <th class="py-4 px-6 text-left font-semibold text-slate-700">Metric</th>
+                                <th class="py-4 px-6 text-left font-semibold text-slate-700">Before Matching</th>
+                                <th class="py-4 px-6 text-left font-semibold text-slate-700">After Matching</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-100">
+                            <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                <td class="py-4 px-6 font-medium text-slate-800">Control Mean Income</td>
+                                <td id="controlBefore" class="py-4 px-6 text-slate-600 font-mono"></td>
+                                <td id="controlAfter" class="py-4 px-6 text-slate-600 font-mono"></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                <td class="py-4 px-6 font-medium text-slate-800">Treatment Mean Income</td>
+                                <td id="treatmentBefore" class="py-4 px-6 text-slate-600 font-mono"></td>
+                                <td id="treatmentAfter" class="py-4 px-6 text-slate-600 font-mono"></td>
+                            </tr>
+                            <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                <td class="py-4 px-6 font-medium text-slate-800">P-value</td>
+                                <td id="pBefore" class="py-4 px-6 text-slate-600 font-mono"></td>
+                                <td id="pAfter" class="py-4 px-6 text-slate-600 font-mono"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Enhanced matching results with modern metric cards -->
+            <div class="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    Matching Results
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gradient-to-br from-slate-50 to-slate-100 p-6 rounded-2xl border border-slate-200/50">
+                        <h3 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                            <div class="w-2 h-2 bg-slate-500 rounded-full"></div>
+                            Matched Control
+                        </h3>
+                        <p id="matchedControl" class="text-3xl font-bold text-slate-800"></p>
+                        <div class="mt-2 h-1 bg-slate-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-slate-500 rounded-full w-3/4"></div>
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-br from-slate-50 to-slate-100 p-6 rounded-2xl border border-slate-200/50">
+                        <h3 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                            <div class="w-2 h-2 bg-slate-500 rounded-full"></div>
+                            Matched Treatment
+                        </h3>
+                        <p id="matchedTreatment" class="text-3xl font-bold text-slate-800"></p>
+                        <div class="mt-2 h-1 bg-slate-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-slate-500 rounded-full w-3/4"></div>
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 rounded-2xl border border-indigo-200/50">
+                        <h3 class="font-semibold text-indigo-700 mb-3 flex items-center gap-2">
+                            <div class="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                            Caliper
+                        </h3>
+                        <p id="caliper" class="text-3xl font-bold text-indigo-800"></p>
+                        <div class="mt-2 h-1 bg-indigo-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-indigo-500 rounded-full w-1/2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Redesigned PSM evaluation section with modern layout -->
+            <div class="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    PSM Evaluation
+                </h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="space-y-6">
+                        <div id="psmEvaluation" class="bg-gradient-to-r from-slate-50 to-slate-100 p-6 rounded-2xl border border-slate-200/50"></div>
+                        
+                        <div class="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200/50">
+                            <h3 class="font-semibold text-blue-800 mb-4 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                Effect Size Summary
+                            </h3>
+                            <div id="effectSizeSummary" class="space-y-2 text-blue-700"></div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-2xl border border-purple-200/50">
+                            <h3 class="font-semibold text-purple-800 mb-4 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                                </svg>
+                                P-Value Summary
+                            </h3>
+                            <div id="pValueSummary" class="space-y-2 text-purple-700"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div class="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-2xl border border-orange-200/50">
+                            <h3 class="font-semibold text-orange-800 mb-4 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                </svg>
+                                Propensity Score Overlap
+                            </h3>
+                            <div id="overlapStatus" class="text-orange-700"></div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-r from-teal-50 to-teal-100 p-6 rounded-2xl border border-teal-200/50">
+                            <h3 class="font-semibold text-teal-800 mb-4 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                                Sample Size Retention
+                            </h3>
+                            <div id="sampleSizeStatus" class="text-teal-700"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modern visualizations section with improved image containers -->
+            <div class="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-rose-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    Statistical Visualizations
+                </h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <div class="bg-gradient-to-br from-slate-50 to-slate-100 p-6 rounded-2xl border border-slate-200/50">
+                        <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            Before Matching Distribution
+                        </h3>
+                        <div class="bg-white rounded-xl p-4 shadow-inner">
+                            <img id="psBeforeImg" class="w-full h-auto rounded-lg">
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-br from-slate-50 to-slate-100 p-6 rounded-2xl border border-slate-200/50">
+                        <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            After Matching Distribution
+                        </h3>
+                        <div class="bg-white rounded-xl p-4 shadow-inner">
+                            <img id="psAfterImg" class="w-full h-auto rounded-lg">
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-br from-slate-50 to-slate-100 p-6 rounded-2xl border border-slate-200/50">
+                    <h3 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        Effect Sizes of Covariates
+                    </h3>
+                    <div class="bg-white rounded-xl p-4 shadow-inner">
+                        <img id="effectSizesImg" class="w-full h-auto rounded-lg">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced JavaScript with improved styling for dynamic content -->
+    <script>
+        document.getElementById('runAnalysis').addEventListener('click', async function() {
+            // Add loading state
+            const button = this;
+            const originalContent = button.innerHTML;
+            button.innerHTML = `
+                <span class="flex items-center gap-3">
+                    <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Analyzing...
+                </span>
+            `;
+            button.disabled = true;
+            
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/psm-analysis', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                const data = await response.json();
+                
+                // Display results with enhanced formatting
+                document.getElementById('controlCount').textContent = data.treatment_counts.control.toLocaleString();
+                document.getElementById('treatmentCount').textContent = data.treatment_counts.treatment.toLocaleString();
+                
+                document.getElementById('controlBefore').textContent = 'Php ' + data.income_comparison.before.control_mean.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('treatmentBefore').textContent = 'Php ' + data.income_comparison.before.treatment_mean.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('pBefore').textContent = data.income_comparison.before.p_value.toFixed(4);
+                
+                document.getElementById('controlAfter').textContent = 'Php ' + data.income_comparison.after.control_mean.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('treatmentAfter').textContent = 'Php ' + data.income_comparison.after.treatment_mean.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('pAfter').textContent = data.income_comparison.after.p_value.toFixed(4);
+                
+                document.getElementById('matchedControl').textContent = data.matching_results.matched_control.toLocaleString();
+                document.getElementById('matchedTreatment').textContent = data.matching_results.matched_treatment.toLocaleString();
+                document.getElementById('caliper').textContent = data.matching_results.caliper.toFixed(4);
+                
+                // Enhanced PSM Evaluation with better styling
+                const psmEval = data.psm_evaluation;
+                let evaluationHTML = `
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-4 h-4 rounded-full ${psmEval.passed ? 'bg-green-500' : 'bg-red-500'}"></div>
+                        <span class="font-semibold ${psmEval.passed ? 'text-green-800' : 'text-red-800'}">
+                            Overall Status: ${psmEval.passed ? 'Passed' : 'Failed'}
+                        </span>
+                    </div>
+                `;
+                
+                if (!psmEval.passed) {
+                    evaluationHTML += '<div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">';
+                    evaluationHTML += '<p class="font-semibold text-red-800 mb-2">Issues Identified:</p>';
+                    evaluationHTML += '<ul class="space-y-1">';
+                    psmEval.reasons.forEach(reason => {
+                        evaluationHTML += `<li class="flex items-start gap-2 text-red-700"><span class="text-red-500 mt-1">•</span>${reason}</li>`;
+                    });
+                    evaluationHTML += '</ul>';
+                    
+                    if (psmEval.failed_covariates.length > 0) {
+                        evaluationHTML += `<p class="mt-3 text-red-700"><strong>Unbalanced Covariates:</strong> ${psmEval.failed_covariates.join(', ')}</p>`;
+                    }
+                    evaluationHTML += '</div>';
+                }
+                document.getElementById('psmEvaluation').innerHTML = evaluationHTML;
+                
+                // Enhanced summaries with better formatting
+                let effectSizeHTML = '<div class="space-y-2">';
+                for (const [key, value] of Object.entries(psmEval.effect_size_summary)) {
+                    effectSizeHTML += `<div class="flex justify-between items-center py-1"><span class="font-medium">${key}:</span><span class="font-mono text-blue-800">${value.toFixed(4)}</span></div>`;
+                }
+                effectSizeHTML += '</div>';
+                document.getElementById('effectSizeSummary').innerHTML = effectSizeHTML;
+                
+                let pValueHTML = '<div class="space-y-2">';
+                for (const [key, value] of Object.entries(psmEval.p_value_summary)) {
+                    pValueHTML += `<div class="flex justify-between items-center py-1"><span class="font-medium">${key}:</span><span class="font-mono text-purple-800">${value.toFixed(4)}</span></div>`;
+                }
+                pValueHTML += '</div>';
+                document.getElementById('pValueSummary').innerHTML = pValueHTML;
+                
+                // Enhanced status displays
+                const overlap = psmEval.overlap_status;
+                let overlapHTML = `<div class="flex justify-between items-center"><span class="font-medium">Max Quantile Difference:</span><span class="font-mono text-orange-800">${overlap.max_quantile_diff.toFixed(4)}</span></div>`;
+                document.getElementById('overlapStatus').innerHTML = overlapHTML;
+                
+                const sampleSize = psmEval.sample_size_status;
+                let sampleSizeHTML = `
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center"><span class="font-medium">Original Treatment:</span><span class="font-mono text-teal-800">${sampleSize.original_treatment_size.toLocaleString()}</span></div>
+                        <div class="flex justify-between items-center"><span class="font-medium">Matched Treatment:</span><span class="font-mono text-teal-800">${sampleSize.matched_treatment_size.toLocaleString()}</span></div>
+                        <div class="flex justify-between items-center"><span class="font-medium">Retention Rate:</span><span class="font-mono text-teal-800">${sampleSize.retention_rate.toFixed(1)}%</span></div>
+                    </div>
+                `;
+                document.getElementById('sampleSizeStatus').innerHTML = sampleSizeHTML;
+                
+                // Visualizations
+                document.getElementById('psBeforeImg').src = `data:image/png;base64,${data.visualizations.ps_before}`;
+                document.getElementById('psAfterImg').src = `data:image/png;base64,${data.visualizations.ps_after}`;
+                document.getElementById('effectSizesImg').src = `data:image/png;base64,${data.visualizations.effect_sizes}`;
+                
+                // Show results with smooth animation
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.classList.remove('hidden');
+                resultsDiv.style.opacity = '0';
+                resultsDiv.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    resultsDiv.style.transition = 'all 0.5s ease-out';
+                    resultsDiv.style.opacity = '1';
+                    resultsDiv.style.transform = 'translateY(0)';
+                }, 100);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while running the analysis. Please check your connection and try again.');
+            } finally {
+                // Restore button
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
