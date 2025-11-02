@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Propensity Score Matching & Clustering Analysis</title>
+    <title>Dynamic PSM & Clustering Analysis</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="tailwind-config.js"></script>
@@ -22,9 +22,9 @@
                     </div>
                     <div>
                         <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                            PSM & Clustering Analysis
+                            Dynamic PSM & Clustering Analysis
                         </h1>
-                        <p class="text-sm text-gray-600">Advanced Statistical Analysis Dashboard</p>
+                        <p class="text-sm text-gray-600">Upload your dataset and configure analysis parameters</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
@@ -36,28 +36,152 @@
     </header>
 
     <main class="container mx-auto px-6 py-8">
-        <!-- Control Panel -->
+        <!-- Data Upload Section -->
         <section class="mb-8 animate-fade-in">
             <div class="glass-effect rounded-2xl p-8 card-hover">
                 <div class="flex items-center justify-between mb-6">
                     <div>
-                        <h2 class="text-xl font-semibold text-gray-900 mb-2">Analysis Control Panel</h2>
-                        <p class="text-gray-600">Initialize propensity score matching and clustering analysis</p>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-2">Dataset Upload</h2>
+                        <p class="text-gray-600">Upload your CSV file to begin analysis</p>
                     </div>
                     <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-bounce-gentle">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                         </svg>
                     </div>
                 </div>
                 
-                <button id="runAnalysis" class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-                    <div class="flex items-center justify-center space-x-3">
-                        <span id="buttonText" class="relative z-10">Run PSM Analysis</span>
-                        <div id="loadingSpinner" class="loading-spinner hidden"></div>
+                <div class="mb-6">
+                    <input type="file" id="csvFile" accept=".csv" class="hidden">
+                    <label for="csvFile" class="cursor-pointer bg-white border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-500 transition-colors duration-300 block">
+                        <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-lg font-medium text-gray-700 mb-2">Upload CSV File</p>
+                        <p class="text-sm text-gray-500">Click to browse or drag and drop your dataset</p>
+                    </label>
+                    <div id="fileInfo" class="hidden mt-4 p-4 bg-blue-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium text-blue-900" id="fileName"></p>
+                                <p class="text-sm text-blue-700" id="fileDetails"></p>
+                            </div>
+                            <button id="removeFile" class="text-red-600 hover:text-red-800">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Configuration Panel -->
+        <section id="configPanel" class="hidden mb-8 animate-fade-in">
+            <div class="glass-effect rounded-2xl p-8 card-hover">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-2">Analysis Configuration</h2>
+                        <p class="text-gray-600">Configure your PSM analysis parameters</p>
+                    </div>
+                    <div class="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
+                    <!-- Treatment Column Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Treatment Column</label>
+                        <select id="treatmentCol" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-300">
+                            <option value="">Select treatment column</option>
+                        </select>
+                        <p class="text-sm text-gray-500 mt-1">Binary column indicating treatment (0/1)</p>
+                    </div>
+
+                    <!-- Outcome Column Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Outcome Column (Optional)</label>
+                        <select id="outcomeCol" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-300">
+                            <option value="">Select outcome column</option>
+                        </select>
+                        <p class="text-sm text-gray-500 mt-1">Numeric column for outcome comparison</p>
+                    </div>
+                </div>
+
+                <!-- Pre-Features Selection -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-gray-700">Pre-Treatment Features</label>
+                        <div class="flex space-x-2">
+                            <button type="button" id="selectAllBtn" class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded transition-colors">
+                                Select All
+                            </button>
+                            <button type="button" id="deselectAllBtn" class="text-xs bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded transition-colors">
+                                Deselect All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="max-h-60 overflow-y-auto border border-gray-300 rounded-xl p-4 bg-white">
+                        <div id="preFeaturesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <!-- Features will be populated here -->
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Select features to use for propensity score calculation</p>
+                </div>
+
+                <!-- Clustering Features Selection -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-gray-700">Clustering Features (Optional)</label>
+                        <div class="flex space-x-2">
+                            <button type="button" id="selectAllClusteringBtn" class="text-xs bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded transition-colors">
+                                Select All
+                            </button>
+                            <button type="button" id="deselectAllClusteringBtn" class="text-xs bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded transition-colors">
+                                Deselect All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="max-h-60 overflow-y-auto border border-gray-300 rounded-xl p-4 bg-white">
+                        <div id="clusteringFeaturesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <!-- Features will be populated here -->
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Select specific features for clustering analysis (leave empty to use all features)</p>
+                </div>
+
+                <!-- Missing Values Strategy -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Missing Values Strategy</label>
+                    <select id="missingStrategy" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-300">
+                        <option value="median">Median Imputation (Recommended)</option>
+                        <option value="mean">Mean Imputation</option>
+                        <option value="mode">Mode Imputation</option>
+                        <option value="drop">Drop Rows with Missing Values</option>
+                        <option value="iterative">Advanced Iterative Imputation</option>
+                    </select>
+                    <p class="text-sm text-gray-500 mt-1">How to handle missing values in your data</p>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="flex items-center justify-between pt-6 border-t border-gray-200">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Ready to Analyze</h3>
+                        <p class="text-sm text-gray-600">Configure your parameters and run the analysis</p>
+                    </div>
+                    <button id="runAnalysis" class="group relative overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                        <div class="flex items-center justify-center space-x-3">
+                            <span id="buttonText" class="relative z-10">Run PSM Analysis</span>
+                            <div id="loadingSpinner" class="loading-spinner hidden"></div>
+                        </div>
+                        <div class="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    </button>
+                </div>
                 
                 <div id="progressContainer" class="hidden mt-4">
                     <div class="flex justify-between text-sm text-gray-600 mb-2">
@@ -73,6 +197,83 @@
 
         <!-- Results Container -->
         <div id="results" class="hidden space-y-8">
+            <!-- EDA Section - NEW -->
+            <section id="edaSection" class="hidden animate-slide-up">
+                <div class="glass-effect rounded-2xl p-8 card-hover">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <div class="w-2 h-8 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full mr-3"></div>
+                        Exploratory Data Analysis (EDA)
+                    </h2>
+                    
+                    <div class="space-y-8">
+                        <!-- Treatment Distribution -->
+                        <div class="bg-white rounded-xl p-6 border border-gray-200">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <div class="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                                Treatment Group Distribution
+                            </h3>
+                            <div class="flex justify-center">
+                                <img id="treatmentDistributionImg" class="max-w-md w-full h-auto rounded-lg shadow-sm">
+                            </div>
+                        </div>
+
+                        <!-- Numeric Features Comparison -->
+                        <div id="numericFeaturesSection" class="bg-white rounded-xl p-6 border border-gray-200 hidden">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                Numeric Features Comparison
+                            </h3>
+                            <img id="numericFeaturesImg" class="w-full h-auto rounded-lg shadow-sm">
+                        </div>
+
+                        <!-- Categorical Features Comparison -->
+                        <div id="categoricalFeaturesSection" class="bg-white rounded-xl p-6 border border-gray-200 hidden">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <div class="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                                Categorical Features Comparison
+                            </h3>
+                            <img id="categoricalFeaturesImg" class="w-full h-auto rounded-lg shadow-sm">
+                        </div>
+
+                        <!-- Correlation Heatmap -->
+                        <div id="correlationSection" class="bg-white rounded-xl p-6 border border-gray-200 hidden">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <div class="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                                Correlation Heatmap
+                            </h3>
+                            <img id="correlationHeatmapImg" class="w-full h-auto rounded-lg shadow-sm">
+                        </div>
+
+                        <!-- Outcome Comparison -->
+                        <div id="outcomeEdaSection" class="bg-white rounded-xl p-6 border border-gray-200 hidden">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                                Outcome Variable Analysis
+                            </h3>
+                            <img id="outcomeComparisonImg" class="w-full h-auto rounded-lg shadow-sm">
+                        </div>
+
+                        <!-- Feature Importance -->
+                        <div id="featureImportanceSection" class="bg-white rounded-xl p-6 border border-gray-200 hidden">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <div class="w-3 h-3 bg-teal-500 rounded-full mr-2"></div>
+                                Feature Importance for Treatment Prediction
+                            </h3>
+                            <img id="featureImportanceImg" class="w-full h-auto rounded-lg shadow-sm">
+                        </div>
+
+                        <!-- Missing Values -->
+                        <div id="missingValuesSection" class="bg-white rounded-xl p-6 border border-gray-200 hidden">
+                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                                Missing Values Analysis
+                            </h3>
+                            <img id="missingValuesImg" class="w-full h-auto rounded-lg shadow-sm">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Treatment/Control Groups -->
             <section class="animate-slide-up">
                 <div class="glass-effect rounded-2xl p-8 card-hover">
@@ -103,12 +304,12 @@
                 </div>
             </section>
 
-            <!-- Income Comparison -->
+            <!-- Outcome Comparison -->
             <section class="animate-slide-up" style="animation-delay: 0.1s">
                 <div class="glass-effect rounded-2xl p-8 card-hover">
                     <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
                         <div class="w-2 h-8 bg-gradient-to-b from-green-500 to-blue-600 rounded-full mr-3"></div>
-                        Income Comparison Analysis
+                        <span id="outcomeComparisonTitle">Outcome Comparison Analysis</span>
                     </h2>
                     <div class="overflow-hidden rounded-xl border border-gray-200">
                         <table class="min-w-full bg-white">
@@ -121,12 +322,12 @@
                             </thead>
                             <tbody class="divide-y divide-gray-200">
                                 <tr class="hover:bg-gray-50 transition-colors duration-200">
-                                    <td class="py-4 px-6 font-medium text-gray-900">Control Mean Income</td>
+                                    <td class="py-4 px-6 font-medium text-gray-900">Control Mean Outcome</td>
                                     <td id="controlBefore" class="py-4 px-6 text-gray-700"></td>
                                     <td id="controlAfter" class="py-4 px-6 text-gray-700"></td>
                                 </tr>
                                 <tr class="hover:bg-gray-50 transition-colors duration-200">
-                                    <td class="py-4 px-6 font-medium text-gray-900">Treatment Mean Income</td>
+                                    <td class="py-4 px-6 font-medium text-gray-900">Treatment Mean Outcome</td>
                                     <td id="treatmentBefore" class="py-4 px-6 text-gray-700"></td>
                                     <td id="treatmentAfter" class="py-4 px-6 text-gray-700"></td>
                                 </tr>
@@ -267,6 +468,28 @@
                         <div class="w-2 h-8 bg-gradient-to-b from-pink-500 to-purple-600 rounded-full mr-3"></div>
                         Advanced Clustering Analysis
                     </h2>
+                    
+                    <!-- Feature Filter for Clustering Results -->
+                    <div class="mb-6 bg-white rounded-xl p-6 border border-gray-200">
+                        <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                            <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"></path>
+                            </svg>
+                            Filter Cluster Analysis
+                        </h3>
+                        <div class="flex flex-wrap gap-2 mb-4" id="featureFilterButtons">
+                            <!-- Filter buttons will be populated here -->
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <input type="text" id="featureSearch" placeholder="Search features..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <button id="selectAllFeatures" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                                Select All
+                            </button>
+                            <button id="clearFeatures" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
                     
                     <div class="space-y-8">
                         <!-- Data Cleaning Summary -->
