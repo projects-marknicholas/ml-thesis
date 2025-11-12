@@ -2,290 +2,46 @@
 let currentDatasetId = null;
 let selectedPreFeatures = [];
 let selectedClusteringFeatures = [];
+let selectedDemographicsFeatures = [];
 let allClusterFeatures = [];
 
-// Enhanced scatter plot with better interactivity and styling
-function createEnhancedScatterPlot(feature, summary, containerId) {
-    const canvas = document.createElement('canvas');
-    canvas.id = `chart-${feature.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    canvas.className = 'chart-container';
+// Create feature visualization for cluster analysis instead of table
+function createFeatureVisualization(feature, visualizationData, container) {
+    const featureContainer = document.createElement('div');
+    featureContainer.className = 'mb-6 bg-white rounded-xl p-6 border border-gray-200 card-hover';
     
-    const container = document.createElement('div');
-    container.className = 'mb-6 bg-white rounded-xl p-6 border border-gray-200 card-hover';
-    container.innerHTML = `
+    let visualizationHTML = `
         <div class="flex items-center justify-between mb-4">
             <h4 class="font-semibold text-gray-900 flex items-center">
                 <div class="w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mr-2"></div>
-                ${feature}
+                ${feature} - Cluster Analysis
             </h4>
-            <div class="text-sm text-gray-500">Interactive Scatter Plot</div>
+            <div class="text-sm text-gray-500">Visual Distribution</div>
         </div>
+        <div class="flex justify-center items-center p-4 bg-gray-50 rounded-lg">
     `;
-    container.appendChild(canvas);
     
-    document.getElementById(containerId).appendChild(container);
+    if (visualizationData) {
+        visualizationHTML += `
+            <img src="data:image/png;base64,${visualizationData}" 
+                 class="w-full h-auto rounded-lg shadow-lg max-w-2xl"
+                 alt="${feature} cluster visualization"
+                 onerror="this.src=''; this.alt='Visualization failed to load'">
+        `;
+    } else {
+        visualizationHTML += `
+            <div class="text-center">
+                <div class="loading-spinner mx-auto mb-2"></div>
+                <p class="text-gray-600">Visualization not available</p>
+            </div>
+        `;
+    }
     
-    // Extract data for enhanced scatter plot
-    const clusters = Object.keys(summary.mean);
-    const colorPalette = [
-        'rgba(59, 130, 246, 0.8)',   // Blue
-        'rgba(16, 185, 129, 0.8)',   // Green
-        'rgba(245, 158, 11, 0.8)',   // Orange
-        'rgba(139, 92, 246, 0.8)',   // Purple
-        'rgba(236, 72, 153, 0.8)',   // Pink
-        'rgba(6, 182, 212, 0.8)'     // Cyan
-    ];
+    visualizationHTML += `</div>`;
+    featureContainer.innerHTML = visualizationHTML;
+    container.appendChild(featureContainer);
     
-    const scatterData = {
-        datasets: clusters.map((cluster, index) => {
-            const points = [];
-            const pointCount = Math.min(100, summary.count[cluster]); // Increased points for better visualization
-            const mean = summary.mean[cluster];
-            const std = summary.std[cluster];
-            
-            for (let i = 0; i < pointCount; i++) {
-                // Use normal distribution for more realistic scatter
-                const u1 = Math.random();
-                const u2 = Math.random();
-                const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-                const value = mean + z0 * std;
-                
-                points.push({
-                    x: value,
-                    y: index + (Math.random() - 0.5) * 0.6, // Jitter for better separation
-                    cluster: cluster,
-                    mean: mean,
-                    std: std
-                });
-            }
-            
-            return {
-                label: `Cluster ${cluster}`,
-                data: points,
-                backgroundColor: colorPalette[index % colorPalette.length],
-                borderColor: colorPalette[index % colorPalette.length].replace('0.8', '1'),
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointBorderWidth: 1,
-                pointHoverBorderWidth: 2
-            };
-        })
-    };
-    
-    // Create enhanced scatter plot
-    new Chart(canvas, {
-        type: 'scatter',
-        data: scatterData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'point'
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: feature,
-                        font: {
-                            size: 14,
-                            weight: 'bold'
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.1)'
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Cluster Groups',
-                        font: {
-                            size: 14,
-                            weight: 'bold'
-                        }
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return `Cluster ${Math.round(value)}`;
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.1)'
-                    }
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: `Distribution of ${feature} across clusters`,
-                    font: {
-                        size: 16,
-                        weight: 'bold'
-                    },
-                    padding: 20
-                },
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: 'white',
-                    bodyColor: 'white',
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                    borderWidth: 1,
-                    callbacks: {
-                        title: function(context) {
-                            return `Cluster ${context[0].raw.cluster}`;
-                        },
-                        label: function(context) {
-                            return [
-                                `Value: ${context.raw.x.toFixed(3)}`,
-                                `Mean: ${context.raw.mean.toFixed(3)}`,
-                                `Std Dev: ${context.raw.std.toFixed(3)}`
-                            ];
-                        }
-                    }
-                }
-            },
-            animation: {
-                duration: 1000,
-                easing: 'easeOutQuart'
-            }
-        }
-    });
-}
-
-// Enhanced bar chart with better styling
-function createEnhancedBarChart(feature, summary, containerId) {
-    const canvas = document.createElement('canvas');
-    canvas.id = `chart-${feature.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    canvas.className = 'chart-container';
-    
-    const container = document.createElement('div');
-    container.className = 'mb-6 bg-white rounded-xl p-6 border border-gray-200 card-hover';
-    container.innerHTML = `
-        <div class="flex items-center justify-between mb-4">
-            <h4 class="font-semibold text-gray-900 flex items-center">
-                <div class="w-3 h-3 bg-gradient-to-r from-green-500 to-blue-600 rounded-full mr-2"></div>
-                ${feature}
-            </h4>
-            <div class="text-sm text-gray-500">Categorical Distribution</div>
-        </div>
-    `;
-    container.appendChild(canvas);
-    
-    document.getElementById(containerId).appendChild(container);
-    
-    // Extract data for enhanced bar chart
-    const clusters = Object.keys(summary);
-    const categories = new Set();
-    
-    clusters.forEach(cluster => {
-        Object.keys(summary[cluster]).forEach(category => {
-            categories.add(category);
-        });
-    });
-    
-    const categoryArray = Array.from(categories);
-    const colorPalette = [
-        'rgba(59, 130, 246, 0.8)',
-        'rgba(16, 185, 129, 0.8)',
-        'rgba(245, 158, 11, 0.8)',
-        'rgba(139, 92, 246, 0.8)',
-        'rgba(236, 72, 153, 0.8)',
-        'rgba(6, 182, 212, 0.8)'
-    ];
-    
-    const barData = {
-        labels: categoryArray,
-        datasets: clusters.map((cluster, index) => ({
-            label: `Cluster ${cluster}`,
-            data: categoryArray.map(category => summary[cluster][category] || 0),
-            backgroundColor: colorPalette[index % colorPalette.length],
-            borderColor: colorPalette[index % colorPalette.length].replace('0.8', '1'),
-            borderWidth: 2,
-            borderRadius: 4,
-            borderSkipped: false
-        }))
-    };
-    
-    // Create enhanced bar chart
-    new Chart(canvas, {
-        type: 'bar',
-        data: barData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Categories',
-                        font: {
-                            size: 14,
-                            weight: 'bold'
-                        }
-                    },
-                    grid: {
-                        display: false
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Proportion',
-                        font: {
-                            size: 14,
-                            weight: 'bold'
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.1)'
-                    }
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: `Distribution of ${feature} across clusters`,
-                    font: {
-                        size: 16,
-                        weight: 'bold'
-                    },
-                    padding: 20
-                },
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: 'white',
-                    bodyColor: 'white',
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                    borderWidth: 1
-                }
-            },
-            animation: {
-                duration: 1000,
-                easing: 'easeOutQuart'
-            }
-        }
-    });
+    return featureContainer;
 }
 
 // Enhanced progress simulation
@@ -379,6 +135,7 @@ function removeFile() {
     currentDatasetId = null;
     selectedPreFeatures = [];
     selectedClusteringFeatures = [];
+    selectedDemographicsFeatures = [];
     allClusterFeatures = [];
     document.getElementById('csvFile').value = '';
     document.getElementById('fileInfo').classList.add('hidden');
@@ -392,6 +149,8 @@ function setupSelectAll() {
     const deselectAllBtn = document.getElementById('deselectAllBtn');
     const selectAllClusteringBtn = document.getElementById('selectAllClusteringBtn');
     const deselectAllClusteringBtn = document.getElementById('deselectAllClusteringBtn');
+    const selectAllDemographicsBtn = document.getElementById('selectAllDemographicsBtn');
+    const deselectAllDemographicsBtn = document.getElementById('deselectAllDemographicsBtn');
     
     if (selectAllBtn && deselectAllBtn) {
         selectAllBtn.addEventListener('click', function() {
@@ -441,6 +200,28 @@ function setupSelectAll() {
             showInfo('All clustering features deselected');
         });
     }
+
+    if (selectAllDemographicsBtn && deselectAllDemographicsBtn) {
+        selectAllDemographicsBtn.addEventListener('click', function() {
+            selectedDemographicsFeatures = [...allClusterFeatures]; // Use all available columns
+            document.querySelectorAll('.demographics-checkbox').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            
+            // Show success feedback
+            showSuccess('All demographics features selected!');
+        });
+        
+        deselectAllDemographicsBtn.addEventListener('click', function() {
+            selectedDemographicsFeatures = [];
+            document.querySelectorAll('.demographics-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Show feedback
+            showInfo('All demographics features deselected');
+        });
+    }
 }
 
 // Populate configuration panel with dataset columns
@@ -478,6 +259,19 @@ function populateConfigurationPanel(datasetInfo) {
         preFeaturesContainer.appendChild(div);
     });
 
+    // Populate demographics features checkboxes
+    const demographicsContainer = document.getElementById('demographicsContainer');
+    demographicsContainer.innerHTML = '';
+    datasetInfo.columns.forEach(col => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center space-x-2';
+        div.innerHTML = `
+            <input type="checkbox" id="demographics-${col}" value="${col}" class="demographics-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+            <label for="demographics-${col}" class="text-sm text-gray-700">${col}</label>
+        `;
+        demographicsContainer.appendChild(div);
+    });
+
     // Populate clustering features checkboxes
     const clusteringFeaturesContainer = document.getElementById('clusteringFeaturesContainer');
     clusteringFeaturesContainer.innerHTML = '';
@@ -502,6 +296,17 @@ function populateConfigurationPanel(datasetInfo) {
                 selectedPreFeatures = selectedPreFeatures.filter(f => f !== this.value);
             }
             updateRunButtonState();
+        });
+    });
+
+    // Add event listeners to demographics checkboxes
+    document.querySelectorAll('.demographics-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                selectedDemographicsFeatures.push(this.value);
+            } else {
+                selectedDemographicsFeatures = selectedDemographicsFeatures.filter(f => f !== this.value);
+            }
         });
     });
 
@@ -597,7 +402,7 @@ function showInfo(message) {
 }
 
 // Setup clustering feature filter
-function setupClusteringFeatureFilter(clusterSummaries) {
+function setupClusteringFeatureFilter(clusterVisualizations) {
     const featureFilterButtons = document.getElementById('featureFilterButtons');
     const featureSearch = document.getElementById('featureSearch');
     const selectAllFeatures = document.getElementById('selectAllFeatures');
@@ -606,8 +411,8 @@ function setupClusteringFeatureFilter(clusterSummaries) {
     // Clear existing buttons
     featureFilterButtons.innerHTML = '';
     
-    // Get all available features from cluster summaries
-    const availableFeatures = Object.keys(clusterSummaries);
+    // Get all available features from cluster visualizations
+    const availableFeatures = Object.keys(clusterVisualizations);
     
     // Create filter buttons for each feature
     availableFeatures.forEach(feature => {
@@ -623,8 +428,8 @@ function setupClusteringFeatureFilter(clusterSummaries) {
             this.classList.toggle('text-gray-700');
             this.classList.toggle('text-white');
             
-            // Filter cluster summaries display
-            filterClusterSummaries(clusterSummaries);
+            // Filter cluster visualizations display
+            filterClusterVisualizations(clusterVisualizations);
         });
         
         featureFilterButtons.appendChild(button);
@@ -649,7 +454,7 @@ function setupClusteringFeatureFilter(clusterSummaries) {
             btn.classList.add('bg-blue-500', 'text-white');
             btn.classList.remove('bg-gray-200', 'text-gray-700');
         });
-        filterClusterSummaries(clusterSummaries);
+        filterClusterVisualizations(clusterVisualizations);
     });
     
     // Setup clear functionality
@@ -658,47 +463,274 @@ function setupClusteringFeatureFilter(clusterSummaries) {
             btn.classList.remove('bg-blue-500', 'text-white');
             btn.classList.add('bg-gray-200', 'text-gray-700');
         });
-        filterClusterSummaries(clusterSummaries);
+        filterClusterVisualizations(clusterVisualizations);
     });
     
     // Initially select all features
     selectAllFeatures.click();
 }
 
-// Filter cluster summaries based on selected features
-function filterClusterSummaries(clusterSummaries) {
-    const clusterSummariesContainer = document.getElementById('clusterSummaries');
-    clusterSummariesContainer.innerHTML = '';
+// Filter cluster visualizations based on selected features
+function filterClusterVisualizations(clusterVisualizations) {
+    const clusterVisualizationsContainer = document.getElementById('clusterVisualizations');
+    if (!clusterVisualizationsContainer) {
+        console.error('clusterVisualizations container not found');
+        return;
+    }
+    
+    clusterVisualizationsContainer.innerHTML = '';
     
     // Get selected features
     const selectedFeatures = Array.from(document.querySelectorAll('.feature-filter-btn.bg-blue-500'))
         .map(btn => btn.dataset.feature);
     
     // If no features selected, show all
-    const featuresToShow = selectedFeatures.length > 0 ? selectedFeatures : Object.keys(clusterSummaries);
+    const featuresToShow = selectedFeatures.length > 0 ? selectedFeatures : Object.keys(clusterVisualizations);
     
-    // Create visualizations for selected features only
+    // Create visualizations for selected features
     featuresToShow.forEach(feature => {
-        if (clusterSummaries[feature]) {
-            const summary = clusterSummaries[feature];
-            if (summary.mean && summary.std && summary.count) {
-                createEnhancedScatterPlot(feature, summary, 'clusterSummaries');
-            } else {
-                createEnhancedBarChart(feature, summary, 'clusterSummaries');
-            }
+        if (clusterVisualizations[feature]) {
+            createFeatureVisualization(feature, clusterVisualizations[feature], clusterVisualizationsContainer);
         }
     });
     
-    // Show message if no features selected
-    if (featuresToShow.length === 0) {
-        clusterSummariesContainer.innerHTML = `
+    // Show message if no features selected or no visualizations available
+    if (featuresToShow.length === 0 || Object.keys(clusterVisualizations).length === 0) {
+        clusterVisualizationsContainer.innerHTML = `
             <div class="text-center py-8 text-gray-500">
                 <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <p>No features selected. Use the filter above to select features to display.</p>
+                <p>No features selected or visualizations available. Use the filter above to select features to display.</p>
             </div>
         `;
+    }
+}
+
+// Function to display additional clustering visualizations
+function displayAdditionalClusteringVisualizations(visualizations) {
+    const vizContainer = document.getElementById('clusteringVizContainer');
+    if (!vizContainer) return;
+    
+    vizContainer.innerHTML = ''; // Clear existing content
+    
+    // Cluster Distribution
+    if (visualizations.cluster_distribution) {
+        vizContainer.innerHTML += `
+            <div class="bg-white rounded-lg p-4 border border-gray-200">
+                <h4 class="font-semibold text-gray-800 mb-3">Cluster Distribution</h4>
+                <img src="data:image/png;base64,${visualizations.cluster_distribution}" 
+                     class="w-full h-auto rounded-lg shadow-sm"
+                     onerror="this.style.display='none'">
+            </div>
+        `;
+    }
+    
+    // Feature Distributions
+    if (visualizations.feature_distributions) {
+        vizContainer.innerHTML += `
+            <div class="bg-white rounded-lg p-4 border border-gray-200">
+                <h4 class="font-semibold text-gray-800 mb-3">Feature Distributions by Cluster</h4>
+                <img src="data:image/png;base64,${visualizations.feature_distributions}" 
+                     class="w-full h-auto rounded-lg shadow-sm"
+                     onerror="this.style.display='none'">
+            </div>
+        `;
+    }
+}
+
+// Enhanced function to display clustering results
+function displayClusteringResults(data) {
+    const clusteringSection = document.getElementById('clusteringResults');
+    
+    if (data.clustering_results) {
+        clusteringSection.classList.remove('hidden');
+        
+        const clustering = data.clustering_results;
+        
+        // Data cleaning summary
+        const cleaning = clustering.data_cleaning;
+        document.getElementById('dataCleaningSummary').innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600">${cleaning.rows_before.toLocaleString()}</div>
+                    <div class="text-sm text-blue-700">Rows Before</div>
+                </div>
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600">${cleaning.rows_after.toLocaleString()}</div>
+                    <div class="text-sm text-green-700">Rows After</div>
+                </div>
+                <div class="text-center p-4 bg-orange-50 rounded-lg">
+                    <div class="text-2xl font-bold text-orange-600">${cleaning.duplicates_removed.toLocaleString()}</div>
+                    <div class="text-sm text-orange-700">Duplicates Removed</div>
+                </div>
+            </div>
+        `;
+        
+        // Dimensionality reduction results
+        const dimReduction = clustering.dimensionality_reduction;
+        if (dimReduction.visualization) {
+            const featureWeightsImg = document.getElementById('featureWeightsImg');
+            featureWeightsImg.src = `data:image/png;base64,${dimReduction.visualization}`;
+            featureWeightsImg.onerror = function() {
+                this.alt = 'Feature weights visualization failed to load';
+            };
+        }
+        
+        // Ensemble clustering results - FIXED CLUSTER VISUALIZATION
+        const ensemble = clustering.ensemble_clustering;
+        if (ensemble.cluster_visualization) {
+            const clusterImg = document.getElementById('clustersImg');
+            clusterImg.src = `data:image/png;base64,${ensemble.cluster_visualization}`;
+            clusterImg.onload = function() {
+                console.log('Cluster visualization loaded successfully');
+            };
+            clusterImg.onerror = function() {
+                console.error('Failed to load cluster visualization');
+                this.alt = 'Cluster visualization failed to load. This may be due to data limitations.';
+                // Create a fallback message
+                const container = this.parentElement;
+                container.innerHTML += `
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-2">
+                        <p class="text-yellow-700 text-sm">
+                            Note: Cluster visualization may not display properly with very small datasets or limited features.
+                        </p>
+                    </div>
+                `;
+            };
+        }
+        
+        // Display additional clustering visualizations if available
+        if (ensemble.clustering_visualizations) {
+            displayAdditionalClusteringVisualizations(ensemble.clustering_visualizations);
+        }
+        
+        // Display feature visualizations INSTEAD OF TABLES
+        if (ensemble.feature_visualizations && Object.keys(ensemble.feature_visualizations).length > 0) {
+            // Create interactive cluster analysis section
+            const interactiveSection = document.createElement('div');
+            interactiveSection.className = 'bg-white rounded-xl p-6 border border-gray-200';
+            interactiveSection.innerHTML = `
+                <h3 class="font-semibold text-gray-900 mb-6 flex items-center">
+                    <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Interactive Cluster Analysis
+                </h3>
+                
+                <!-- Feature Filter -->
+                <div class="mb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-2">Filter Features</h4>
+                            <div class="flex flex-wrap gap-2" id="featureFilterButtons"></div>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="text" id="featureSearch" placeholder="Search features..." 
+                                   class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <button id="selectAllFeatures" class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                                Select All
+                            </button>
+                            <button id="clearFeatures" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Visualizations Container -->
+                <div id="clusterVisualizations" class="space-y-6"></div>
+            `;
+            
+            // Find or create the cluster summaries section
+            let summariesSection = document.getElementById('clusterSummariesSection');
+            if (!summariesSection) {
+                summariesSection = document.createElement('div');
+                summariesSection.id = 'clusterSummariesSection';
+                summariesSection.className = 'bg-white rounded-xl p-6 border border-gray-200';
+                
+                // Find where to insert the section
+                const clusteringResults = document.getElementById('clusteringResults');
+                const spaceY8 = clusteringResults.querySelector('.space-y-8');
+                if (spaceY8) {
+                    spaceY8.appendChild(summariesSection);
+                } else {
+                    clusteringResults.appendChild(summariesSection);
+                }
+            }
+            
+            // Replace the content
+            summariesSection.innerHTML = interactiveSection.innerHTML;
+            
+            // Setup the feature filter with visualizations
+            setupClusteringFeatureFilter(ensemble.feature_visualizations);
+        }
+        
+    } else {
+        clusteringSection.classList.add('hidden');
+    }
+}
+
+// Function to display demographics analysis
+function displayDemographicsResults(data) {
+    const demographicsSection = document.getElementById('demographicsSection');
+    const demographicsResults = document.getElementById('demographicsResults');
+    const demographicsComparisonImg = document.getElementById('demographicsComparisonImg');
+    
+    if (data.demographics_analysis && Object.keys(data.demographics_analysis).length > 0) {
+        demographicsSection.classList.remove('hidden');
+        
+        // Display demographics results
+        let demographicsHTML = '<div class="grid grid-cols-1 md:grid-cols-2 gap-6">';
+        
+        Object.entries(data.demographics_analysis).forEach(([feature, analysis]) => {
+            if (analysis.type === 'numeric') {
+                demographicsHTML += `
+                    <div class="bg-white rounded-xl p-6 border border-gray-200">
+                        <h4 class="font-semibold text-gray-900 mb-4">${feature}</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Control Mean:</span>
+                                <span class="font-semibold">${analysis.control_mean.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Treatment Mean:</span>
+                                <span class="font-semibold">${analysis.treatment_mean.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">P-value:</span>
+                                <span class="font-semibold ${analysis.p_value > 0.05 ? 'text-green-600' : 'text-red-600'}">
+                                    ${analysis.p_value.toFixed(4)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // For categorical features
+                demographicsHTML += `
+                    <div class="bg-white rounded-xl p-6 border border-gray-200">
+                        <h4 class="font-semibold text-gray-900 mb-4">${feature}</h4>
+                        <div class="text-sm text-gray-600">
+                            Categorical distribution available in visualization
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        demographicsHTML += '</div>';
+        demographicsResults.innerHTML = demographicsHTML;
+        
+        // Display visualization if available
+        if (data.visualizations && data.visualizations.demographics_comparison) {
+            demographicsComparisonImg.src = `data:image/png;base64,${data.visualizations.demographics_comparison}`;
+        } else {
+            demographicsComparisonImg.style.display = 'none';
+        }
+        
+    } else {
+        demographicsSection.classList.add('hidden');
     }
 }
 
@@ -734,7 +766,8 @@ document.getElementById('runAnalysis').addEventListener('click', async function(
             treatment_col: treatmentCol,
             outcome_col: outcomeCol || null,
             missing_strategy: missingStrategy,
-            clustering_features: selectedClusteringFeatures.length > 0 ? selectedClusteringFeatures : null
+            clustering_features: selectedClusteringFeatures.length > 0 ? selectedClusteringFeatures : null,
+            demographics_features: selectedDemographicsFeatures.length > 0 ? selectedDemographicsFeatures : null
         };
         
         const response = await fetch('http://127.0.0.1:5000/api/psm-analysis', {
@@ -993,139 +1026,13 @@ function displayResults(data, outcomeCol) {
     document.getElementById('psAfterImg').src = `data:image/png;base64,${data.visualizations.ps_after}`;
     document.getElementById('effectSizesImg').src = `data:image/png;base64,${data.visualizations.effect_sizes}`;
     
+    // Display demographics results
+    displayDemographicsResults(data);
+    
     // Enhanced clustering results
     const clusteringSection = document.getElementById('clusteringResults');
     if (psmEval.passed && data.clustering_results) {
-        clusteringSection.classList.remove('hidden');
-        
-        // Enhanced data cleaning summary
-        const cleaning = data.clustering_results.data_cleaning;
-        let cleaningHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="text-center p-4 bg-blue-50 rounded-lg">
-                    <div class="text-2xl font-bold text-blue-600">${cleaning.rows_before.toLocaleString()}</div>
-                    <div class="text-sm text-blue-700">Rows Before</div>
-                </div>
-                <div class="text-center p-4 bg-green-50 rounded-lg">
-                    <div class="text-2xl font-bold text-green-600">${cleaning.rows_after.toLocaleString()}</div>
-                    <div class="text-sm text-green-700">Rows After</div>
-                </div>
-                <div class="text-center p-4 bg-orange-50 rounded-lg">
-                    <div class="text-2xl font-bold text-orange-600">${cleaning.duplicates_removed.toLocaleString()}</div>
-                    <div class="text-sm text-orange-700">Duplicates Removed</div>
-                </div>
-            </div>
-        `;
-        document.getElementById('dataCleaningSummary').innerHTML = cleaningHTML;
-        
-        // Enhanced dimensionality reduction results
-        const dimReduction = data.clustering_results.dimensionality_reduction;
-        let dimReductionHTML = `
-            <div class="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-                <div class="flex items-center">
-                    <div class="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                    <span class="font-semibold text-gray-900">Best Model: ${dimReduction.best_model}</span>
-                </div>
-            </div>
-        `;
-        
-        if (dimReduction.metrics && dimReduction.metrics.length > 0) {
-            dimReductionHTML += `
-                <div class="overflow-hidden rounded-lg border border-gray-200">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
-                            <tr>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">Model</th>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">Silhouette</th>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">Calinski-Harabasz</th>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">Davies-Bouldin</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-            `;
-            
-            dimReduction.metrics.forEach((metric, index) => {
-                const isSelected = metric.Model === dimReduction.best_model;
-                dimReductionHTML += `
-                    <tr class="hover:bg-gray-50 transition-colors duration-200 ${isSelected ? 'bg-blue-50' : ''}">
-                        <td class="py-3 px-4 font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}">${metric.Model}</td>
-                        <td class="py-3 px-4 text-gray-700">${typeof metric.Silhouette === 'number' ? metric.Silhouette.toFixed(4) : metric.Silhouette}</td>
-                        <td class="py-3 px-4 text-gray-700">${typeof metric['Calinski-Harabasz'] === 'number' ? metric['Calinski-Harabasz'].toFixed(4) : metric['Calinski-Harabasz']}</td>
-                        <td class="py-3 px-4 text-gray-700">${typeof metric['Davies-Bouldin'] === 'number' ? metric['Davies-Bouldin'].toFixed(4) : metric['Davies-Bouldin']}</td>
-                    </tr>
-                `;
-            });
-            
-            dimReductionHTML += `</tbody></table></div>`;
-        } else {
-            dimReductionHTML += `<p class="text-gray-500 text-center py-4">No dimensionality reduction metrics available</p>`;
-        }
-        
-        document.getElementById('dimReductionResults').innerHTML = dimReductionHTML;
-        
-        // Load feature weights visualization
-        if (dimReduction.visualization) {
-            document.getElementById('featureWeightsImg').src = `data:image/png;base64,${dimReduction.visualization}`;
-        }
-        
-        // Enhanced ensemble clustering results
-        const ensemble = data.clustering_results.ensemble_clustering;
-        let ensembleHTML = `
-            <div class="mb-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg">
-                <div class="flex items-center">
-                    <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                    <span class="font-semibold text-gray-900">Best Model: ${ensemble.best_model}</span>
-                </div>
-            </div>
-        `;
-        
-        if (ensemble.metrics && ensemble.metrics.length > 0) {
-            ensembleHTML += `
-                <div class="overflow-hidden rounded-lg border border-gray-200">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
-                            <tr>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">Model</th>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">Silhouette</th>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">Calinski-Harabasz</th>
-                                <th class="py-3 px-4 text-left text-sm font-semibold text-gray-700">Davies-Bouldin</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-            `;
-            
-            ensemble.metrics.forEach((metric, index) => {
-                const isSelected = metric.Model === ensemble.best_model;
-                ensembleHTML += `
-                    <tr class="hover:bg-gray-50 transition-colors duration-200 ${isSelected ? 'bg-green-50' : ''}">
-                        <td class="py-3 px-4 font-medium ${isSelected ? 'text-green-900' : 'text-gray-900'}">${metric.Model}</td>
-                        <td class="py-3 px-4 text-gray-700">${typeof metric.Silhouette === 'number' ? metric.Silhouette.toFixed(4) : metric.Silhouette}</td>
-                        <td class="py-3 px-4 text-gray-700">${typeof metric['Calinski-Harabasz'] === 'number' ? metric['Calinski-Harabasz'].toFixed(4) : metric['Calinski-Harabasz']}</td>
-                        <td class="py-3 px-4 text-gray-700">${typeof metric['Davies-Bouldin'] === 'number' ? metric['Davies-Bouldin'].toFixed(4) : metric['Davies-Bouldin']}</td>
-                    </tr>
-                `;
-            });
-            
-            ensembleHTML += `</tbody></table></div>`;
-        } else {
-            ensembleHTML += `<p class="text-gray-500 text-center py-4">No ensemble clustering metrics available</p>`;
-        }
-        
-        document.getElementById('ensembleClusteringResults').innerHTML = ensembleHTML;
-        
-        // Load cluster visualizations
-        if (ensemble.cluster_visualization) {
-            document.getElementById('clustersImg').src = `data:image/png;base64,${ensemble.cluster_visualization}`;
-        }
-        if (ensemble.cluster_profiles) {
-            document.getElementById('clusterProfilesImg').src = `data:image/png;base64,${ensemble.cluster_profiles}`;
-        }
-        
-        // Setup feature filter for cluster summaries
-        if (ensemble.cluster_summaries) {
-            setupClusteringFeatureFilter(ensemble.cluster_summaries);
-        }
-        
+        displayClusteringResults(data);
     } else {
         clusteringSection.classList.add('hidden');
     }

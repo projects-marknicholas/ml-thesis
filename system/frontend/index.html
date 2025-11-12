@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dynamic PSM & Clustering Analysis</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
     <script src="tailwind-config.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -134,6 +134,27 @@
                     <p class="text-sm text-gray-500 mt-1">Select features to use for propensity score calculation</p>
                 </div>
 
+                <!-- Demographics Selection -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-gray-700">Demographics Features</label>
+                        <div class="flex space-x-2">
+                            <button type="button" id="selectAllDemographicsBtn" class="text-xs bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded transition-colors">
+                                Select All
+                            </button>
+                            <button type="button" id="deselectAllDemographicsBtn" class="text-xs bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded transition-colors">
+                                Deselect All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="max-h-60 overflow-y-auto border border-gray-300 rounded-xl p-4 bg-white">
+                        <div id="demographicsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <!-- Demographics features will be populated here -->
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Select demographic features for subgroup analysis (e.g., age, income, education)</p>
+                </div>
+
                 <!-- Clustering Features Selection -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-2">
@@ -197,7 +218,7 @@
 
         <!-- Results Container -->
         <div id="results" class="hidden space-y-8">
-            <!-- EDA Section - NEW -->
+            <!-- EDA Section -->
             <section id="edaSection" class="hidden animate-slide-up">
                 <div class="glass-effect rounded-2xl p-8 card-hover">
                     <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
@@ -338,6 +359,24 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Demographics Analysis -->
+            <section id="demographicsSection" class="hidden animate-slide-up" style="animation-delay: 0.15s">
+                <div class="glass-effect rounded-2xl p-8 card-hover">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <div class="w-2 h-8 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full mr-3"></div>
+                        Demographics Analysis
+                    </h2>
+                    
+                    <div id="demographicsResults" class="space-y-6">
+                        <!-- Demographics results will be populated here -->
+                    </div>
+                    
+                    <div id="demographicsVisualization" class="mt-6">
+                        <img id="demographicsComparisonImg" class="w-full h-auto rounded-lg shadow-sm">
                     </div>
                 </div>
             </section>
@@ -538,17 +577,6 @@
                                     <img id="clusterProfilesImg" class="w-full h-auto transition-transform duration-300 hover:scale-105">
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Enhanced Cluster Summaries -->
-                        <div class="bg-white rounded-xl p-6 border border-gray-200">
-                            <h3 class="font-semibold text-gray-900 mb-6 flex items-center">
-                                <svg class="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                </svg>
-                                Interactive Cluster Analysis
-                            </h3>
-                            <div id="clusterSummaries" class="space-y-6"></div>
                         </div>
                     </div>
                 </div>

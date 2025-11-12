@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import math
-from scipy.stats import ttest_ind, chi2_contingency
+from scipy.stats import ttest_ind
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import NearestNeighbors
 from flask import Flask, jsonify, request, send_file
@@ -345,7 +345,7 @@ def generate_eda_visualizations(df, treatment_col, pre_features, outcome_col=Non
             # Add value labels on bars
             for i, (bar, importance) in enumerate(zip(bars, feature_importance['importance'])):
                 plt.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2, 
-                        f'{importance:.3f}', ha='left', va='center', fontweight='bold', fontsize=8)
+                        f'{importance:.3f}', ha='left', va='center', fontweight='bold')
             
             plt.grid(True, axis='x', alpha=0.3, linestyle='--')
             plt.gca().set_axisbelow(True)
@@ -1330,327 +1330,6 @@ def handle_missing_values(df, pre_features, strategy='median'):
     
     return df_clean, missing_info
 
-def create_demographic_groups(df, demographics_features):
-    """
-    Create meaningful groups for demographic variables
-    """
-    df_grouped = df.copy()
-    
-    for feature in demographics_features:
-        if feature not in df.columns:
-            continue
-            
-        # Age grouping
-        if 'age' in feature.lower() and df[feature].dtype in ['int64', 'float64']:
-            bins = [0, 18, 25, 35, 45, 55, 65, 100]
-            labels = ['<18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+']
-            df_grouped[f'{feature}_group'] = pd.cut(df[feature], bins=bins, labels=labels, right=False)
-        
-        # Income grouping
-        elif 'income' in feature.lower() and df[feature].dtype in ['int64', 'float64']:
-            if df[feature].max() > 1000:  # Assuming larger numbers are monthly income
-                bins = [0, 10000, 20000, 30000, 50000, 75000, 100000, float('inf')]
-                labels = ['<10k', '10k-20k', '20k-30k', '30k-50k', '50k-75k', '75k-100k', '100k+']
-            else:  # Assuming smaller numbers are in thousands
-                bins = [0, 10, 20, 30, 50, 75, 100, float('inf')]
-                labels = ['<10k', '10k-20k', '20k-30k', '30k-50k', '50k-75k', '75k-100k', '100k+']
-            df_grouped[f'{feature}_group'] = pd.cut(df[feature], bins=bins, labels=labels, right=False)
-        
-        # Education grouping
-        elif 'educ' in feature.lower() and df[feature].dtype == 'object':
-            # Map education levels to standardized groups
-            education_mapping = {
-                'elementary': 'Elementary',
-                'high school': 'High School', 
-                'highschool': 'High School',
-                'college': 'College',
-                'university': 'College',
-                'graduate': 'Graduate',
-                'masters': 'Graduate',
-                'phd': 'Graduate',
-                'doctorate': 'Graduate'
-            }
-            df_grouped[f'{feature}_group'] = df[feature].str.lower().map(education_mapping).fillna('Other')
-        
-        # Gender grouping
-        elif 'gender' in feature.lower() and df[feature].dtype == 'object':
-            gender_mapping = {
-                'm': 'Male',
-                'male': 'Male',
-                'f': 'Female', 
-                'female': 'Female',
-                '1': 'Male',
-                '2': 'Female'
-            }
-            df_grouped[f'{feature}_group'] = df[feature].str.lower().map(gender_mapping).fillna('Other')
-    
-    return df_grouped
-
-def analyze_demographics(df_matched, demographics_features, treatment_col):
-    """Analyze demographics distribution across treatment and control groups with proper grouping"""
-    if not demographics_features:
-        return {}
-    
-    # Create demographic groups
-    df_grouped = create_demographic_groups(df_matched, demographics_features)
-    demographics_analysis = {}
-    
-    for feature in demographics_features:
-        if feature not in df_matched.columns:
-            continue
-            
-        grouped_feature = f'{feature}_group'
-        
-        if grouped_feature in df_grouped.columns:
-            # For grouped variables (both numeric and categorical after grouping)
-            cross_tab = pd.crosstab(df_grouped[grouped_feature], df_grouped[treatment_col], normalize='columns') * 100
-            
-            # Calculate chi-square test for independence
-            chi2, p_value, dof, expected = chi2_contingency(pd.crosstab(df_grouped[grouped_feature], df_grouped[treatment_col]))
-            
-            demographics_analysis[feature] = {
-                'type': 'grouped',
-                'groups': convert_to_serializable(cross_tab.round(2).to_dict()),
-                'p_value': float(p_value),
-                'chi_square': float(chi2),
-                'group_distribution': convert_to_serializable(df_grouped[grouped_feature].value_counts().to_dict())
-            }
-        else:
-            # For variables that couldn't be grouped (use original analysis)
-            if df_matched[feature].dtype in ['int64', 'float64']:
-                stats = df_matched.groupby(treatment_col)[feature].agg(['mean', 'std', 'count']).round(2)
-                demographics_analysis[feature] = {
-                    'type': 'numeric',
-                    'control_mean': float(stats.loc[0, 'mean']),
-                    'control_std': float(stats.loc[0, 'std']),
-                    'treatment_mean': float(stats.loc[1, 'mean']),
-                    'treatment_std': float(stats.loc[1, 'std']),
-                    'p_value': float(ttest_ind(
-                        df_matched[df_matched[treatment_col] == 0][feature],
-                        df_matched[df_matched[treatment_col] == 1][feature]
-                    ).pvalue)
-                }
-            else:
-                cross_tab = pd.crosstab(df_matched[feature], df_matched[treatment_col], normalize='columns') * 100
-                chi2, p_value, dof, expected = chi2_contingency(pd.crosstab(df_matched[feature], df_matched[treatment_col]))
-                
-                demographics_analysis[feature] = {
-                    'type': 'categorical',
-                    'distribution': convert_to_serializable(cross_tab.round(2).to_dict()),
-                    'p_value': float(p_value),
-                    'chi_square': float(chi2)
-                }
-    
-    return demographics_analysis
-
-def generate_demographics_visualizations(df_matched, demographics_features, treatment_col):
-    """Generate visualizations for demographics analysis with proper grouping"""
-    try:
-        visualizations = {}
-        
-        if not demographics_features:
-            return visualizations
-        
-        # Create demographic groups
-        df_grouped = create_demographic_groups(df_matched, demographics_features)
-        
-        # Create demographics comparison plots
-        n_features = len(demographics_features)
-        n_cols = 2
-        n_rows = math.ceil(n_features / n_cols)
-        
-        plt.figure(figsize=(15, 5 * n_rows))
-        
-        for i, feature in enumerate(demographics_features, 1):
-            if feature not in df_matched.columns:
-                continue
-                
-            plt.subplot(n_rows, n_cols, i)
-            
-            grouped_feature = f'{feature}_group'
-            
-            if grouped_feature in df_grouped.columns:
-                # Use grouped feature for visualization
-                cross_tab = pd.crosstab(df_grouped[grouped_feature], df_grouped[treatment_col], normalize='columns') * 100
-                
-                # Create stacked bar plot for grouped demographics
-                ax = cross_tab.plot(kind='bar', ax=plt.gca(), color=['lightblue', 'lightcoral'])
-                plt.title(f'{feature} Distribution by Group', fontweight='bold', fontsize=12)
-                plt.xlabel(feature, fontsize=10)
-                plt.ylabel('Percentage (%)', fontsize=10)
-                plt.legend(['Control', 'Treatment'], fontsize=9)
-                plt.xticks(rotation=45, ha='right')
-                
-                # Add value labels for significant segments
-                for container in ax.containers:
-                    for bar in container:
-                        height = bar.get_height()
-                        if height > 10:  # Only label segments larger than 10%
-                            ax.text(bar.get_x() + bar.get_width()/2, bar.get_y() + height/2,
-                                   f'{height:.1f}%', ha='center', va='center', 
-                                   fontsize=8, fontweight='bold', color='white')
-                
-            else:
-                # Use original feature for visualization
-                if df_matched[feature].dtype in ['int64', 'float64']:
-                    # Numeric feature - bar plot
-                    control_data = df_matched[df_matched[treatment_col] == 0][feature]
-                    treatment_data = df_matched[df_matched[treatment_col] == 1][feature]
-                    
-                    control_mean = control_data.mean()
-                    treatment_mean = treatment_data.mean()
-                    control_std = control_data.std()
-                    treatment_std = treatment_data.std()
-                    
-                    groups = ['Control', 'Treatment']
-                    means = [control_mean, treatment_mean]
-                    stds = [control_std, treatment_std]
-                    
-                    bars = plt.bar(groups, means, yerr=stds, capsize=5,
-                                  color=['lightblue', 'lightcoral'],
-                                  edgecolor='black', linewidth=1, alpha=0.8)
-                    
-                    plt.title(f'{feature} - Treatment vs Control', fontweight='bold', fontsize=12)
-                    plt.xlabel('Group', fontsize=10)
-                    plt.ylabel(f'Average {feature}', fontsize=10)
-                    
-                    # Add value labels on bars
-                    for bar, mean_val in zip(bars, means):
-                        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height(),
-                                f'{mean_val:.2f}', ha='center', va='bottom', 
-                                fontweight='bold', fontsize=9)
-                    
-                else:
-                    # Categorical feature - stacked bar plot
-                    cross_tab = pd.crosstab(df_matched[feature], df_matched[treatment_col], normalize='columns') * 100
-                    
-                    # Limit to top categories for readability
-                    top_categories = cross_tab.sum(axis=1).nlargest(8).index
-                    cross_tab = cross_tab.loc[top_categories]
-                    
-                    ax = cross_tab.plot(kind='bar', ax=plt.gca(), color=['lightblue', 'lightcoral'])
-                    plt.title(f'{feature} Distribution by Group', fontweight='bold', fontsize=12)
-                    plt.xlabel(feature, fontsize=10)
-                    plt.ylabel('Percentage (%)', fontsize=10)
-                    plt.legend(['Control', 'Treatment'], fontsize=9)
-                    plt.xticks(rotation=45, ha='right')
-            
-            plt.grid(True, axis='y', alpha=0.3, linestyle='--')
-            plt.gca().set_axisbelow(True)
-            plt.gca().set_facecolor('#f8f9fa')
-        
-        plt.tight_layout()
-        img_buf = io.BytesIO()
-        plt.savefig(img_buf, format='png', bbox_inches='tight', dpi=100,
-                   facecolor='white', edgecolor='white')
-        img_buf.seek(0)
-        visualizations['demographics_comparison'] = base64.b64encode(img_buf.read()).decode('utf-8')
-        plt.close()
-        
-        return visualizations
-        
-    except Exception as e:
-        print(f"Error generating demographics visualizations: {str(e)}")
-        return {}
-
-def generate_demographics_detailed_analysis(df_matched, demographics_features, treatment_col):
-    """Generate detailed demographics analysis with group breakdowns"""
-    if not demographics_features:
-        return {}
-    
-    df_grouped = create_demographic_groups(df_matched, demographics_features)
-    detailed_analysis = {}
-    
-    for feature in demographics_features:
-        if feature not in df_matched.columns:
-            continue
-            
-        grouped_feature = f'{feature}_group'
-        analysis_data = {}
-        
-        if grouped_feature in df_grouped.columns:
-            # Detailed group analysis
-            cross_tab = pd.crosstab(df_grouped[grouped_feature], df_grouped[treatment_col])
-            cross_tab_pct = pd.crosstab(df_grouped[grouped_feature], df_grouped[treatment_col], normalize='columns') * 100
-            
-            # Calculate statistics for each group
-            groups_data = {}
-            for group in cross_tab.index:
-                control_count = cross_tab.loc[group, 0] if 0 in cross_tab.columns else 0
-                treatment_count = cross_tab.loc[group, 1] if 1 in cross_tab.columns else 0
-                control_pct = cross_tab_pct.loc[group, 0] if 0 in cross_tab_pct.columns else 0
-                treatment_pct = cross_tab_pct.loc[group, 1] if 1 in cross_tab_pct.columns else 0
-                
-                groups_data[str(group)] = {
-                    'control_count': int(control_count),
-                    'treatment_count': int(treatment_count),
-                    'control_percentage': float(control_pct),
-                    'treatment_percentage': float(treatment_pct)
-                }
-            
-            analysis_data = {
-                'type': 'grouped',
-                'groups': groups_data,
-                'total_control': int(cross_tab[0].sum() if 0 in cross_tab.columns else 0),
-                'total_treatment': int(cross_tab[1].sum() if 1 in cross_tab.columns else 0)
-            }
-            
-            # Add chi-square test
-            chi2, p_value, dof, expected = chi2_contingency(cross_tab)
-            analysis_data['chi_square'] = float(chi2)
-            analysis_data['p_value'] = float(p_value)
-            
-        else:
-            # For ungrouped numeric variables
-            if df_matched[feature].dtype in ['int64', 'float64']:
-                control_data = df_matched[df_matched[treatment_col] == 0][feature]
-                treatment_data = df_matched[df_matched[treatment_col] == 1][feature]
-                
-                analysis_data = {
-                    'type': 'numeric',
-                    'control_mean': float(control_data.mean()),
-                    'control_std': float(control_data.std()),
-                    'control_count': int(len(control_data)),
-                    'treatment_mean': float(treatment_data.mean()),
-                    'treatment_std': float(treatment_data.std()),
-                    'treatment_count': int(len(treatment_data)),
-                    'p_value': float(ttest_ind(control_data, treatment_data).pvalue)
-                }
-            else:
-                # For ungrouped categorical variables
-                cross_tab = pd.crosstab(df_matched[feature], df_matched[treatment_col])
-                cross_tab_pct = pd.crosstab(df_matched[feature], df_matched[treatment_col], normalize='columns') * 100
-                
-                categories_data = {}
-                for category in cross_tab.index:
-                    control_count = cross_tab.loc[category, 0] if 0 in cross_tab.columns else 0
-                    treatment_count = cross_tab.loc[category, 1] if 1 in cross_tab.columns else 0
-                    control_pct = cross_tab_pct.loc[category, 0] if 0 in cross_tab_pct.columns else 0
-                    treatment_pct = cross_tab_pct.loc[category, 1] if 1 in cross_tab_pct.columns else 0
-                    
-                    categories_data[str(category)] = {
-                        'control_count': int(control_count),
-                        'treatment_count': int(treatment_count),
-                        'control_percentage': float(control_pct),
-                        'treatment_percentage': float(treatment_pct)
-                    }
-                
-                analysis_data = {
-                    'type': 'categorical',
-                    'categories': categories_data,
-                    'total_control': int(cross_tab[0].sum() if 0 in cross_tab.columns else 0),
-                    'total_treatment': int(cross_tab[1].sum() if 1 in cross_tab.columns else 0)
-                }
-                
-                # Add chi-square test
-                chi2, p_value, dof, expected = chi2_contingency(cross_tab)
-                analysis_data['chi_square'] = float(chi2)
-                analysis_data['p_value'] = float(p_value)
-        
-        detailed_analysis[feature] = analysis_data
-    
-    return detailed_analysis
-
 @app.route('/api/psm-analysis', methods=['POST'])
 def psm_analysis():
     try:
@@ -1662,7 +1341,6 @@ def psm_analysis():
         outcome_col = data.get('outcome_col')
         missing_strategy = data.get('missing_strategy', 'median')  # Default to median imputation
         clustering_features = data.get('clustering_features', [])  # New parameter for clustering feature selection
-        demographics_features = data.get('demographics_features', [])  # NEW: Demographics features
         
         if not dataset_id or dataset_id not in uploaded_datasets:
             return jsonify({'error': 'Dataset not found'}), 404
@@ -1829,121 +1507,53 @@ def psm_analysis():
         # Check PSM success
         psm_results = check_psm_success(df_effect_sizes, df_matched, df)
         
-        # NEW: Analyze demographics
-        demographics_results = analyze_demographics(df_matched, demographics_features, 'treatment')
-        demographics_detailed = generate_demographics_detailed_analysis(df_matched, demographics_features, 'treatment')
-        demographics_visualizations = generate_demographics_visualizations(df_matched, demographics_features, 'treatment')
-        
-        # Generate visualizations - IMPROVED HISTOGRAM STYLE
-        def create_ps_plot_improved(data, title):
+        # Generate visualizations
+        def create_ps_plot(data, title):
             try:
-                plt.figure(figsize=(12, 6))
-                
-                # Separate treatment and control groups
-                treatment_ps = data[data['treatment'] == 1]['ps']
-                control_ps = data[data['treatment'] == 0]['ps']
-                
-                # Create histogram with solid colors and proper alignment
-                bins = np.linspace(0, 1, 20)
-                
-                # Plot histograms with solid colors
-                plt.hist(control_ps, bins=bins, alpha=0.7, color='#1f77b4', label='Control', 
-                        edgecolor='black', linewidth=0.5)
-                plt.hist(treatment_ps, bins=bins, alpha=0.7, color='#ff7f0e', label='Treatment',
-                        edgecolor='black', linewidth=0.5)
-                
-                plt.title(title, fontsize=14, fontweight='bold')
-                plt.xlabel("Propensity Score", fontsize=12)
-                plt.ylabel("Frequency", fontsize=12)
-                plt.legend(fontsize=10)
-                
-                # Add grid for better readability
-                plt.grid(True, alpha=0.3, linestyle='--')
-                plt.gca().set_axisbelow(True)
-                plt.gca().set_facecolor('#f8f9fa')
-                plt.gcf().patch.set_facecolor('white')
+                plt.figure(figsize=(10, 5))
+                sns.histplot(data=data, x='ps', hue='treatment', kde=True, bins=30)
+                plt.title(title)
+                plt.xlabel("Propensity Score")
+                plt.ylabel("Count")
                 
                 img_buf = io.BytesIO()
-                plt.savefig(img_buf, format='png', bbox_inches='tight', dpi=100,
-                           facecolor='white', edgecolor='white')
+                plt.savefig(img_buf, format='png', bbox_inches='tight')
                 img_buf.seek(0)
                 img_base64 = base64.b64encode(img_buf.read()).decode('utf-8')
                 plt.close()
                 return img_base64
             except Exception as e:
-                print(f"Improved plot creation failed: {str(e)}")
+                print(f"Plot creation failed: {str(e)}")
                 return ""
         
-        # Effect sizes plot - IMPROVED HISTOGRAM STYLE
-        def create_effect_sizes_plot_improved(df_effect_sizes_sorted):
+        ps_before_base64 = create_ps_plot(df, "Propensity Score Distribution Before Matching")
+        ps_after_base64 = create_ps_plot(df_matched, "Propensity Score Distribution After Matching")
+        
+        # Effect sizes plot
+        def create_effect_sizes_plot(df_effect_sizes_sorted):
             try:
-                plt.figure(figsize=(14, max(8, len(df_effect_sizes_sorted['feature'].unique()) * 0.3)))
-                
-                # Separate before and after matching data
-                before_data = df_effect_sizes_sorted[df_effect_sizes_sorted['matching'] == 'before']
-                after_data = df_effect_sizes_sorted[df_effect_sizes_sorted['matching'] == 'after']
-                
-                # Get features in order
-                features = df_effect_sizes_sorted['feature'].unique()
-                
-                # Set up the bar positions
-                x = np.arange(len(features))
-                width = 0.35
-                
-                # Create bars
-                bars_before = plt.bar(x - width/2, before_data['effect_size'], width, 
-                                    label='Before Matching', color='#1f77b4', alpha=0.8,
-                                    edgecolor='black', linewidth=0.5)
-                bars_after = plt.bar(x + width/2, after_data['effect_size'], width,
-                                   label='After Matching', color='#ff7f0e', alpha=0.8,
-                                   edgecolor='black', linewidth=0.5)
-                
-                plt.title("Effect Sizes of Covariates Before and After Matching", 
-                         fontsize=14, fontweight='bold')
-                plt.xlabel("Cohen's d Effect Size", fontsize=12)
-                plt.ylabel("Features", fontsize=12)
-                
-                # Add effect size reference lines
-                plt.axvline(0.1, color='gray', linestyle='--', alpha=0.7, label='Small Effect')
-                plt.axvline(0.25, color='orange', linestyle='--', alpha=0.7, label='Medium Effect')
-                plt.axvline(0.5, color='red', linestyle='--', alpha=0.7, label='Large Effect')
-                
-                plt.yticks(x, features)
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-                
-                # Add value labels on bars
-                for bars in [bars_before, bars_after]:
-                    for bar in bars:
-                        height = bar.get_height()
-                        plt.text(bar.get_x() + bar.get_width()/2., height,
-                                f'{height:.2f}', ha='center', va='bottom' if height >= 0 else 'top',
-                                fontsize=8, fontweight='bold')
-                
-                # Add grid and styling
-                plt.grid(True, axis='x', alpha=0.3, linestyle='--')
-                plt.gca().set_axisbelow(True)
-                plt.gca().set_facecolor('#f8f9fa')
-                plt.gcf().patch.set_facecolor('white')
-                
-                plt.tight_layout()
+                plt.figure(figsize=(15, max(10, len(df_effect_sizes_sorted['feature'].unique()) * 0.25)))
+                sns.barplot(data=df_effect_sizes_sorted, x='effect_size', y='feature', hue='matching', orient='h')
+                plt.title("Effect Sizes of Covariates Before and After Matching")
+                plt.axvline(0.1, color='gray', linestyle='--', label='Small Effect')
+                plt.axvline(0.25, color='orange', linestyle='--', label='Medium Effect')
+                plt.axvline(0.5, color='red', linestyle='--', label='Large Effect')
+                plt.xlabel("Cohen's d Effect Size")
+                plt.ylabel("Feature")
+                plt.legend()
                 
                 img_buf = io.BytesIO()
-                plt.savefig(img_buf, format='png', bbox_inches='tight', dpi=100,
-                           facecolor='white', edgecolor='white')
+                plt.savefig(img_buf, format='png', bbox_inches='tight')
                 img_buf.seek(0)
                 img_base64 = base64.b64encode(img_buf.read()).decode('utf-8')
                 plt.close()
                 return img_base64
             except Exception as e:
-                print(f"Improved effect sizes plot failed: {str(e)}")
+                print(f"Effect sizes plot failed: {str(e)}")
                 return ""
-        
-        # Use improved visualization functions
-        ps_before_base64 = create_ps_plot_improved(df, "Propensity Score Distribution Before Matching")
-        ps_after_base64 = create_ps_plot_improved(df_matched, "Propensity Score Distribution After Matching")
         
         df_effect_sizes_sorted = df_effect_sizes.sort_values(by='effect_size', ascending=False)
-        effect_sizes_base64 = create_effect_sizes_plot_improved(df_effect_sizes_sorted)
+        effect_sizes_base64 = create_effect_sizes_plot(df_effect_sizes_sorted)
         
         # Prepare response - convert everything to serializable types
         response = {
@@ -1974,8 +1584,7 @@ def psm_analysis():
                 'ps_before': ps_before_base64,
                 'ps_after': ps_after_base64,
                 'effect_sizes': effect_sizes_base64,
-                'eda_visualizations': eda_visualizations,  # Add EDA visualizations to response
-                'demographics_comparison': demographics_visualizations.get('demographics_comparison', '')  # NEW
+                'eda_visualizations': eda_visualizations  # Add EDA visualizations to response
             },
             'missing_values_handled': {
                 'strategy_used': str(missing_strategy),
@@ -1988,9 +1597,7 @@ def psm_analysis():
                     'control': 0,
                     'treatment': 1
                 }
-            },
-            'demographics_analysis': convert_to_serializable(demographics_results),  # NEW
-            'demographics_detailed': convert_to_serializable(demographics_detailed)  # NEW
+            }
         }
         
         # Only run clustering if PSM passed and we have enough data
